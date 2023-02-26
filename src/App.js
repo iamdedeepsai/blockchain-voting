@@ -6,10 +6,11 @@ import {
     Text,
     Image,
     useColorModeValue,
-    ChakraProvider, useToast, TabPanel, TabPanels, Tab, TabList, Tabs
+    ChakraProvider, useToast, TabPanel, TabPanels, Tab, TabList, Tabs, Center
 } from '@chakra-ui/react';
-import {ArrowForwardIcon} from "@chakra-ui/icons";
 import {useState} from "react";
+import {PieChart} from "react-minimal-pie-chart";
+import { sha256} from 'js-sha256';
 
 const candidates = [
     {
@@ -41,9 +42,13 @@ function App() {
     const bg = useColorModeValue('gray.50', 'gray.700')
     const toast = useToast();
 
-    const handleVote = (candidate) => {
+    const handleVote = async (candidate) => {
         setSelectedCandidate(candidate)
         setIsDisabled(true)
+        const ip = await fetch("https://api.ipify.org?format=json");
+        ip.json().then(r => {
+            sendVote(r.ip, candidate.id).then(r => console.log(r));
+        });
         if (!isDisabled) toast({
             title: "Voted!",
             description: `You voted for ${candidate.name}`,
@@ -51,6 +56,22 @@ function App() {
             duration: 3000,
             isClosable: true,
         })
+    }
+
+    const sendVote = async (ip, id) => {
+        console.log("ip: " + ip);
+        const res = await fetch('http://localhost:5000/vote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id: sha256(ip.toString()).toString(),
+                vote: id
+            })
+        })
+        const data = await res.json()
+        console.log(data)
     }
 
     return (
@@ -118,7 +139,17 @@ function App() {
                             </div>
                         </TabPanel>
                         <TabPanel>
-                            <p>two!</p>
+                            <Center className={"w-full"}>
+                                <PieChart
+                                    data={[
+                                        { title: 'One', value: 10, color: '#E38627' },
+                                        { title: 'Two', value: 15, color: '#C13C37' },
+                                        { title: 'Three', value: 20, color: '#6A2135' },
+                                    ]}
+                                    className={"w-1/2 h-1/2 mx-10"}
+                                />
+                                <Button>Download blockchain</Button>
+                            </Center>
                         </TabPanel>
                     </TabPanels>
                 </Tabs>
