@@ -6,7 +6,7 @@ import {
     Text,
     Image,
     useColorModeValue,
-    ChakraProvider, useToast, TabPanel, TabPanels, Tab, TabList, Tabs, Center
+    ChakraProvider, useToast, TabPanel, TabPanels, Tab, TabList, Tabs, Center, Stack
 } from '@chakra-ui/react';
 import {useState} from "react";
 import {PieChart} from "react-minimal-pie-chart";
@@ -40,7 +40,30 @@ function App() {
     const [selectedCandidate, setSelectedCandidate] = useState(null)
     const [isDisabled, setIsDisabled] = useState(false)
     const bg = useColorModeValue('gray.50', 'gray.700')
+    const [dataJSON, setDataJSON] = useState([0, 0, 0]);
     const toast = useToast();
+
+    const getResults = async () => {
+        const data = await fetch('http://localhost:5000/decrypted_results');
+        var nerding = [0, 0, 0];
+        data.json().then(r => {
+            nerding = r;
+            setDataJSON(r)
+            console.log(r);
+        });;
+        return nerding;
+    }
+
+    const download = async () => {
+        const link = document.createElement('a');
+        const data = await fetch('http://localhost:5000/chain')
+        const json = await data.json();
+        const file = new Blob([JSON.stringify(json)], {type: 'text/plain'});
+        link.download = 'blockchain.txt';
+        link.href = URL.createObjectURL(file);
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
 
     const handleVote = async (candidate) => {
         setSelectedCandidate(candidate)
@@ -67,9 +90,18 @@ function App() {
             },
             body: JSON.stringify({
                 id: sha256(ip.toString()).toString(),
-                vote: id
+                vote: id - 1
             })
         })
+        if (res.status === 401) {
+            toast({
+                title: "Error",
+                description: "You have already voted!",
+                status: "error",
+                duration: 3000,
+                isClosable: true,
+            })
+        }
         const data = await res.json()
         console.log(data)
     }
@@ -103,7 +135,7 @@ function App() {
                                         w={['100%', '50%', '33.3%']}
                                         p={0}
                                         onClick={() => handleVote(candidate)}
-                                        sx={isDisabled ? { cursor: 'not-allowed' } : { cursor: 'pointer' }}
+                                        sx={isDisabled ? {cursor: 'not-allowed'} : {cursor: 'pointer'}}
                                         opacity={isDisabled && selectedCandidate.id !== candidate.id ? 0.5 : 1}
                                         pointerEvents={
                                             isDisabled && selectedCandidate.id !== candidate.id ? 'none' : 'auto'
@@ -112,7 +144,7 @@ function App() {
                                         borderRadius="lg"
                                         boxShadow="md"
                                         transition="transform 0.2s"
-                                        _hover={!isDisabled && { transform: 'scale(1.05)' }}
+                                        _hover={!isDisabled && {transform: 'scale(1.05)'}}
                                         className={"h-1/6"}
                                     >
                                         <Image
@@ -140,22 +172,20 @@ function App() {
                         </TabPanel>
                         <TabPanel>
                             <Center className={"w-full"}>
-                                <PieChart
-                                    data={[
-                                        { title: 'One', value: 10, color: '#E38627' },
-                                        { title: 'Two', value: 15, color: '#C13C37' },
-                                        { title: 'Three', value: 20, color: '#6A2135' },
-                                    ]}
-                                    className={"w-1/2 h-1/2 mx-10"}
-                                />
-                                <Button>Download blockchain</Button>
+                                <Stack className={"text-center"}>
+                                    <Text>John Doe: {dataJSON[0]}</Text>
+                                    <Text>Jane Smith: {dataJSON[1]}</Text>
+                                    <Text>Mike Johnson: {dataJSON[2]}</Text>
+                                    <Button onClick={download} className={""}>Download blockchain</Button>
+                                    <Button onClick={getResults} className={""}>Refresh</Button>
+                                </Stack>
                             </Center>
                         </TabPanel>
                     </TabPanels>
                 </Tabs>
             </Flex>
         </ChakraProvider>
-  );
+    );
 }
 
 export default App;
